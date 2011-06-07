@@ -5,7 +5,10 @@ from django.db import models
 from django.contrib import admin
 from django.contrib.auth.models import User
 from photo_share.settings import MEDIA_ROOT
-    
+from tempfile import NamedTemporaryFile
+from django.core.files import File
+from os.path import join as pjoin
+
 class Album(models.Model):
     title = models.CharField(max_length=60)
     pulbic = models.BooleanField(default=False)
@@ -34,13 +37,24 @@ class Image(models.Model):
     width = models.IntegerField(blank=True,null=True)
     height = models.IntegerField(blank=True,null=True)
     user = models.ForeignKey(User,null=True,blank=True)
-    
+    thumbnail2 = models.ImageField(upload_to="images/", blank=True, null=True)
+
     def save(self,*args,**kwargs):
         """save image dimentions"""
         print "save",args,kwargs
         super(Image,self).save(*args,**kwargs)
         im = PImage.open(os.path.join(MEDIA_ROOT,self.image.name))
         self.width,self.height = im.size
+
+        # large thumbnail
+        fn,ext = os.path.splitext(self.image.name)
+        im.thumbnail((128,128),PImage.ANTIALIAS)
+        thumb_fn = fn + "-thumb2" + ext
+        tf2 = NamedTemporaryFile()
+        im.save(tf2.name,"BMP")
+        self.thumbnail2.save(thumb_fn,File(open(tf2.name)),save=False)
+        tf2.close()
+
         super(Image,self).save(*args,**kwargs)
         
     def size(self):
